@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface CartItem {
   id: string;
@@ -23,28 +24,39 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load cart from localStorage on mount
+  // Get cart key based on user session
+  const getCartKey = () => {
+    return session?.user?.email ? `cart_${session.user.email}` : 'cart_guest';
+  };
+
+  // Load cart from localStorage when session changes
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
+    const cartKey = getCartKey();
+    const savedCart = localStorage.getItem(cartKey);
     if (savedCart) {
       try {
         setItems(JSON.parse(savedCart));
       } catch (error) {
         console.error('Error loading cart:', error);
+        setItems([]);
       }
+    } else {
+      setItems([]);
     }
     setIsLoaded(true);
-  }, []);
+  }, [session?.user?.email]);
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('cart', JSON.stringify(items));
+      const cartKey = getCartKey();
+      localStorage.setItem(cartKey, JSON.stringify(items));
     }
-  }, [items, isLoaded]);
+  }, [items, isLoaded, session?.user?.email]);
 
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
     setItems((currentItems) => {
