@@ -1,6 +1,11 @@
 import { ProductForm } from '@/components/admin/ProductForm';
+import { prisma } from '@/lib/db';
 
-export default function NewProductPage() {
+export default async function NewProductPage() {
+  const categories = await prisma.category.findMany({
+    orderBy: { name: 'asc' },
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -10,7 +15,7 @@ export default function NewProductPage() {
         </p>
       </div>
 
-      <ProductForm />
+      <ProductForm categories={categories} />
     </div>
   );
 }

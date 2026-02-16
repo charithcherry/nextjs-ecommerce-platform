@@ -66,17 +66,27 @@ export default async function AdminProductsPage() {
                   <TableCell>{formatPrice(product.priceInCents)}</TableCell>
                   <TableCell>{product._count.orders}</TableCell>
                   <TableCell>
-                    <Badge variant={product.isAvailableForPurchase ? 'default' : 'secondary'}>
-                      {product.isAvailableForPurchase ? 'Available' : 'Unavailable'}
-                    </Badge>
+                    <div className="flex gap-2">
+                      {product.isDeleted ? (
+                        <Badge variant="destructive">Deleted</Badge>
+                      ) : (
+                        <Badge variant={product.isAvailableForPurchase ? 'default' : 'secondary'}>
+                          {product.isAvailableForPurchase ? 'Available' : 'Unavailable'}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Link href={`/admin/products/${product.id}/edit`}>
-                      <Button variant="outline" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <DeleteProductButton productId={product.id} productName={product.name} />
+                    {!product.isDeleted && (
+                      <>
+                        <Link href={`/admin/products/${product.id}/edit`}>
+                          <Button variant="outline" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                        <DeleteProductButton productId={product.id} productName={product.name} />
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

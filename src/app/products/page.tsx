@@ -5,15 +5,19 @@ import { ProductSearch } from '@/components/ProductSearch';
 import { Header } from '@/components/Header';
 import { formatPrice } from '@/lib/format';
 import { prisma } from '@/lib/db';
+import { ProductImage } from '@/components/products/ProductImage';
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; sortBy?: string; order?: string }>;
+  searchParams: Promise<{ search?: string; category?: string; sortBy?: string; order?: string }>;
 }) {
-  const { search, sortBy = 'createdAt', order = 'desc' } = await searchParams;
+  const { search, category, sortBy = 'createdAt', order = 'desc' } = await searchParams;
 
-  const where: any = { isAvailableForPurchase: true };
+  const where: any = {
+    isAvailableForPurchase: true,
+    isDeleted: false,
+  };
 
   if (search) {
     where.OR = [
@@ -22,10 +26,23 @@ export default async function ProductsPage({
     ];
   }
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { [sortBy]: order },
-  });
+  if (category) {
+    where.categories = {
+      some: {
+        slug: category,
+      },
+    };
+  }
+
+  const [products, categories] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { [sortBy]: order },
+    }),
+    prisma.category.findMany({
+      orderBy: { name: 'asc' },
+    }),
+  ]);
 
   return (
     <>
@@ -36,7 +53,7 @@ export default async function ProductsPage({
           <p className="text-muted-foreground mb-6">
             Browse our complete collection of digital products
           </p>
-          <ProductSearch />
+          <ProductSearch categories={categories} />
         </div>
 
         {search && (
@@ -49,8 +66,12 @@ export default async function ProductsPage({
           {products.map((product) => (
             <Card key={product.id} className="flex flex-col hover:shadow-lg transition-shadow">
               <CardHeader>
-                <div className="aspect-video bg-muted rounded-md mb-4 flex items-center justify-center">
-                  <span className="text-muted-foreground">Product Image</span>
+                <div className="aspect-video rounded-md mb-4 relative overflow-hidden">
+                  <ProductImage
+                    src={product.imagePath}
+                    alt={product.name}
+                    className="rounded-md"
+                  />
                 </div>
                 <CardTitle className="line-clamp-1">{product.name}</CardTitle>
                 <CardDescription className="line-clamp-2">

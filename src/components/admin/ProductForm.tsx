@@ -9,6 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface ProductFormProps {
   product?: {
     id: string;
@@ -18,13 +24,19 @@ interface ProductFormProps {
     imagePath: string;
     description: string;
     isAvailableForPurchase: boolean;
+    categories?: Category[];
   };
+  categories?: Category[];
 }
 
-export function ProductForm({ product }: ProductFormProps) {
+export function ProductForm({ product, categories = [] }: ProductFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    product?.categories?.map(c => c.id) || []
+  );
   const [formData, setFormData] = useState({
     name: product?.name || '',
     price: product ? (product.priceInCents / 100).toString() : '',
@@ -33,6 +45,44 @@ export function ProductForm({ product }: ProductFormProps) {
     description: product?.description || '',
     isAvailableForPurchase: product?.isAvailableForPurchase ?? true,
   });
+
+  const handleFileUpload = async (file: File, type: 'image' | 'file') => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+
+      setFormData((prev) => ({
+        ...prev,
+        [type === 'image' ? 'imagePath' : 'filePath']: url,
+      }));
+
+      toast({
+        title: 'Upload successful',
+        description: `${type === 'image' ? 'Image' : 'File'} uploaded successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Upload failed',
+        description: error.message || 'Failed to upload file. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +98,7 @@ export function ProductForm({ product }: ProductFormProps) {
         imagePath: formData.imagePath,
         description: formData.description,
         isAvailableForPurchase: formData.isAvailableForPurchase,
+        categoryIds: selectedCategories,
       };
 
       const url = product ? `/api/products/${product.id}` : '/api/products';
@@ -122,32 +173,87 @@ export function ProductForm({ product }: ProductFormProps) {
             />
           </div>
 
+          {categories.length > 0 && (
+            <div className="space-y-2">
+              <Label>Categories</Label>
+              <div className="border rounded-md p-4 space-y-2 max-h-60 overflow-y-auto">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`category-${category.id}`}
+                      checked={selectedCategories.includes(category.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCategories([...selectedCategories, category.id]);
+                        } else {
+                          setSelectedCategories(selectedCategories.filter(id => id !== category.id));
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <Label
+                      htmlFor={`category-${category.id}`}
+                      className="cursor-pointer font-normal"
+                    >
+                      {category.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Select one or more categories for this product
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="imagePath">Image Path</Label>
-            <Input
-              id="imagePath"
-              value={formData.imagePath}
-              onChange={(e) => setFormData({ ...formData, imagePath: e.target.value })}
-              required
-              placeholder="/products/images/product.jpg"
-            />
-            <p className="text-sm text-muted-foreground">
-              Path to the product image (for now, use placeholder paths)
-            </p>
+            <Label htmlFor="imageUpload">Product Image</Label>
+            <div className="flex flex-col gap-2">
+              <Input
+                id="imageUpload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'image');
+                }}
+                disabled={uploading}
+              />
+              {formData.imagePath && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Current:</span>
+                  <span className="text-primary">{formData.imagePath}</span>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Upload a product image (JPEG, PNG, or WebP, max 10MB)
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="filePath">File Path</Label>
-            <Input
-              id="filePath"
-              value={formData.filePath}
-              onChange={(e) => setFormData({ ...formData, filePath: e.target.value })}
-              required
-              placeholder="/products/files/product.pdf"
-            />
-            <p className="text-sm text-muted-foreground">
-              Path to the downloadable file (for now, use placeholder paths)
-            </p>
+            <Label htmlFor="fileUpload">Downloadable File</Label>
+            <div className="flex flex-col gap-2">
+              <Input
+                id="fileUpload"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'file');
+                }}
+                disabled={uploading}
+              />
+              {formData.filePath && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Current:</span>
+                  <span className="text-primary">{formData.filePath}</span>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Upload the digital product file that customers will download
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -164,8 +270,8 @@ export function ProductForm({ product }: ProductFormProps) {
           </div>
 
           <div className="flex gap-4">
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}
+            <Button type="submit" disabled={loading || uploading}>
+              {loading ? 'Saving...' : uploading ? 'Uploading...' : product ? 'Update Product' : 'Create Product'}
             </Button>
             <Button
               type="button"

@@ -10,6 +10,7 @@ interface BuyNowButtonProps {
     id: string;
     name: string;
     priceInCents: number;
+    imagePath: string;
   };
 }
 
@@ -24,7 +25,7 @@ export function BuyNowButton({ product }: BuyNowButtonProps) {
       id: product.id,
       name: product.name,
       priceInCents: product.priceInCents,
-      quantity: 1,
+      imagePath: product.imagePath,
     });
 
     // Show toast

@@ -35,7 +35,21 @@ export default async function OrdersPage() {
     where: { userId: user.id },
     orderBy: { createdAt: 'desc' },
     include: {
-      product: true,
+      product: {
+        include: {
+          downloadverification: {
+            where: {
+              expires: {
+                gt: new Date(), // Only include non-expired tokens
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1, // Get the most recent valid token
+          },
+        },
+      },
     },
   });
 
@@ -85,10 +99,19 @@ export default async function OrdersPage() {
                           {formatPrice(order.pricePaidInCents)}
                         </p>
                       </div>
-                      <Button>
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
+                      {order.product.downloadverification.length > 0 ? (
+                        <Link href={`/api/downloads/${order.product.downloadverification[0].id}`}>
+                          <Button>
+                            <Download className="w-4 h-4 mr-2" />
+                            Download
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button disabled variant="secondary">
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Expired
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

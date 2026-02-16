@@ -47,7 +47,13 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, priceInCents, filePath, imagePath, description, isAvailableForPurchase } = body;
+    const { name, priceInCents, filePath, imagePath, description, isAvailableForPurchase, categoryIds } = body;
+
+    // Handle category updates separately if provided
+    const categoryUpdate = categoryIds !== undefined ? {
+      set: [], // First disconnect all
+      connect: categoryIds.map((catId: string) => ({ id: catId })), // Then connect new ones
+    } : undefined;
 
     const product = await prisma.product.update({
       where: { id },
@@ -58,6 +64,7 @@ export async function PUT(
         ...(imagePath && { imagePath }),
         ...(description && { description }),
         ...(typeof isAvailableForPurchase === 'boolean' && { isAvailableForPurchase }),
+        ...(categoryUpdate && { categories: categoryUpdate }),
       },
     });
 
@@ -71,7 +78,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/products/[id] - Delete product (admin only)
+// DELETE /api/products/[id] - Soft-delete product (admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -84,11 +91,31 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    await prisma.product.delete({
+
+    // Check if product has orders
+    const product = await prisma.product.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: { orders: true },
+        },
+      },
     });
 
-    return NextResponse.json({ message: 'Product deleted successfully' });
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Soft-delete the product to preserve order history
+    await prisma.product.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
+
+    return NextResponse.json({
+      message: 'Product deleted successfully',
+      hasOrders: product._count.orders > 0,
+    });
   } catch (error) {
     console.error('Error deleting product:', error);
     return NextResponse.json(

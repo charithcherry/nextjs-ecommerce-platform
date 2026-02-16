@@ -15,10 +15,12 @@ model Product {
   imagePath              String
   description            String
   isAvailableForPurchase Boolean                @default(true)
+  isDeleted              Boolean                @default(false)
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   downloadverification   DownloadVerification[]
   orders                 Order[]
+  categories             Category[]
 }
 
 model User {
@@ -54,4 +56,13 @@ model DownloadVerification {
   createdAt DateTime @default(now())
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
 }

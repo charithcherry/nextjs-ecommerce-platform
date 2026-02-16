@@ -5,10 +5,14 @@ import { Header } from '@/components/Header';
 import { ArrowRight } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
 import { prisma } from '@/lib/db';
+import { ProductImage } from '@/components/products/ProductImage';
 
 export default async function Home() {
   const featuredProducts = await prisma.product.findMany({
-    where: { isAvailableForPurchase: true },
+    where: {
+      isAvailableForPurchase: true,
+      isDeleted: false,
+    },
     orderBy: { createdAt: 'desc' },
     take: 6,
   });
@@ -54,8 +58,12 @@ export default async function Home() {
               {featuredProducts.map((product) => (
                 <Card key={product.id} className="flex flex-col">
                   <CardHeader>
-                    <div className="aspect-video bg-muted rounded-md mb-4 flex items-center justify-center">
-                      <span className="text-muted-foreground">Product Image</span>
+                    <div className="aspect-video rounded-md mb-4 relative overflow-hidden">
+                      <ProductImage
+                        src={product.imagePath}
+                        alt={product.name}
+                        className="rounded-md"
+                      />
                     </div>
                     <CardTitle className="line-clamp-1">{product.name}</CardTitle>
                     <CardDescription className="line-clamp-2">
@@ -112,7 +120,7 @@ export default async function Home() {
                 </div>
                 <h3 className="font-semibold mb-2">Quality Products</h3>
                 <p className="text-sm text-muted-foreground">
-                  Your payment information is always safe and secure
+                  Carefully curated digital products that meet our high standards
                 </p>
               </div>
             </div>

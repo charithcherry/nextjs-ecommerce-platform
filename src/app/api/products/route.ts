@@ -6,13 +6,20 @@ import { prisma } from '@/lib/db';
 // GET /api/products - List all products
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
     const { searchParams } = new URL(request.url);
     const availableOnly = searchParams.get('available') === 'true';
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
     const search = searchParams.get('search');
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
 
     const where: any = {};
+
+    // Always exclude deleted products unless admin explicitly requests them
+    if (!includeDeleted || !session?.user?.isAdmin) {
+      where.isDeleted = false;
+    }
 
     if (availableOnly) {
       where.isAvailableForPurchase = true;
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, priceInCents, filePath, imagePath, description, isAvailableForPurchase } = body;
+    const { name, priceInCents, filePath, imagePath, description, isAvailableForPurchase, categoryIds } = body;
 
     if (!name || !priceInCents || !filePath || !imagePath || !description) {
       return NextResponse.json(
@@ -72,6 +79,9 @@ export async function POST(request: NextRequest) {
         imagePath,
         description,
         isAvailableForPurchase: isAvailableForPurchase ?? true,
+        categories: categoryIds && categoryIds.length > 0 ? {
+          connect: categoryIds.map((id: string) => ({ id })),
+        } : undefined,
       },
     });
 

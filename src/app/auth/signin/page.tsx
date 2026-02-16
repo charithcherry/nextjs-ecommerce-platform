@@ -90,11 +90,13 @@ export default function SignInPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-            <div className="text-sm text-muted-foreground mt-4">
-              <p>Demo credentials:</p>
-              <p>Admin: admin@example.com / admin123</p>
-              <p>Customer: customer@example.com / customer123</p>
-            </div>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-sm text-muted-foreground mt-4">
+                <p>Demo credentials:</p>
+                <p>Admin: admin@example.com / admin123</p>
+                <p>Customer: customer@example.com / customer123</p>
+              </div>
+            )}
 
             <p className="text-sm text-center text-muted-foreground mt-4">
               Don't have an account?{' '}

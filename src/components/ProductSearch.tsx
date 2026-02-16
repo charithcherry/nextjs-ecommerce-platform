@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,32 +13,44 @@ import {
 } from '@/components/ui/select';
 import { Search, SlidersHorizontal } from 'lucide-react';
 
-export function ProductSearch() {
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface ProductSearchProps {
+  categories?: Category[];
+}
+
+export function ProductSearch({ categories = [] }: ProductSearchProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [category, setCategory] = useState(searchParams.get('category') || '');
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'createdAt');
   const [order, setOrder] = useState(searchParams.get('order') || 'desc');
+
+  const updateURL = useCallback(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (category) params.set('category', category);
+    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
+    if (order !== 'desc') params.set('order', order);
+
+    router.push(`/products?${params.toString()}`);
+  }, [search, category, sortBy, order, router]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     updateURL();
   };
 
-  const updateURL = () => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (sortBy !== 'createdAt') params.set('sortBy', sortBy);
-    if (order !== 'desc') params.set('order', order);
-
-    router.push(`/products?${params.toString()}`);
-  };
-
   useEffect(() => {
-    if (sortBy !== 'createdAt' || order !== 'desc') {
+    if (category || sortBy !== 'createdAt' || order !== 'desc') {
       updateURL();
     }
-  }, [sortBy, order]);
+  }, [category, sortBy, order, updateURL]);
 
   return (
     <div className="space-y-4">
@@ -56,11 +68,29 @@ export function ProductSearch() {
         <Button type="submit">Search</Button>
       </form>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Sort by:</span>
+          <span className="text-sm text-muted-foreground">Filter:</span>
         </div>
+
+        {categories.length > 0 && (
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.slug}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <span className="text-sm text-muted-foreground">Sort by:</span>
 
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[180px]">
@@ -83,11 +113,12 @@ export function ProductSearch() {
           </SelectContent>
         </Select>
 
-        {(search || sortBy !== 'createdAt' || order !== 'desc') && (
+        {(search || category || sortBy !== 'createdAt' || order !== 'desc') && (
           <Button
             variant="ghost"
             onClick={() => {
               setSearch('');
+              setCategory('');
               setSortBy('createdAt');
               setOrder('desc');
               router.push('/products');

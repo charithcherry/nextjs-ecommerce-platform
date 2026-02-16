@@ -38,13 +38,14 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Create orders for each item
+        // Create orders and download verification tokens for each item
         for (const item of items) {
           const product = await prisma.product.findUnique({
             where: { id: item.id },
           });
 
           if (product) {
+            // Create the order
             await prisma.order.create({
               data: {
                 userId,
@@ -52,6 +53,16 @@ export async function POST(request: NextRequest) {
                 pricePaidInCents: product.priceInCents * item.quantity,
               },
             });
+
+            // Create download verification token(s) for each quantity
+            for (let i = 0; i < item.quantity; i++) {
+              await prisma.downloadVerification.create({
+                data: {
+                  productId: product.id,
+                  expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+                },
+              });
+            }
           }
         }
 

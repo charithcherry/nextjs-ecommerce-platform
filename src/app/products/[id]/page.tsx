@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AddToCartButton } from '@/components/products/AddToCartButton';
 import { BuyNowButton } from '@/components/products/BuyNowButton';
+import { ProductImage } from '@/components/products/ProductImage';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
@@ -43,8 +44,13 @@ export default async function ProductDetailPage({
           <div>
             <Card>
               <CardContent className="p-0">
-                <div className="aspect-square bg-muted rounded-md flex items-center justify-center">
-                  <span className="text-muted-foreground text-xl">Product Image</span>
+                <div className="aspect-square rounded-md relative overflow-hidden">
+                  <ProductImage
+                    src={product.imagePath}
+                    alt={product.name}
+                    className="rounded-md"
+                    priority
+                  />
                 </div>
               </CardContent>
             </Card>
